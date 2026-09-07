@@ -35,6 +35,22 @@ class PackagingTests(unittest.TestCase):
             self.assertTrue(os.access(SKILL / name, os.X_OK))
         self.assertIn(f"## {VERSION}", (ROOT / "CHANGELOG.md").read_text())
 
+    def test_project_onboarding_instructions_and_portable_note(self):
+        content = (SKILL / "SKILL.md").read_text()
+        self.assertIn("first invocation in a project", content)
+        self.assertIn("root `AGENTS.md`", content)
+        self.assertIn("do not append duplicates", content)
+        self.assertIn("rev-parse --show-toplevel", content)
+        self.assertIn("project is read-only", content)
+        self.assertIn("storage setup is separate", (ROOT / "README.md").read_text().lower())
+        note = re.search(r"```markdown\n(.*?)\n```", content, re.DOTALL).group(1)
+        self.assertIn("## Papercuts (log the friction you hit)", note)
+        self.assertIn("use the `papercuts` skill", note)
+        self.assertIn('add --source agent "<what tripped you up>"', note)
+        self.assertIn("Never re-log deferred", note)
+        self.assertNotIn("./papercuts", note)
+        self.assertLess(len(note.split()), 180)
+
     def test_no_absolute_developer_paths(self):
         for path in SKILL.rglob("*"):
             if path.is_file() and "__pycache__" not in path.parts:

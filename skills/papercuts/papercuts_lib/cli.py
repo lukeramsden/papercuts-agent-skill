@@ -12,7 +12,7 @@ from .service import Papercuts
 from .setup import doctor, setup
 from .storage import build_storage
 
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 
 
 class BatchError(PapercutsError):

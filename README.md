@@ -56,6 +56,25 @@ For local files, setup can be one command:
 Read the [setup guide](skills/papercuts/references/setup.md) for AWS SSO, GCS ADC,
 R2 credentials, IAM permissions, headless runners and troubleshooting.
 
+## Project onboarding: keep the reminder in `AGENTS.md`
+
+When you first invoke the skill in a project, it instructs the agent to add a
+small **“Papercuts (log the friction you hit)”** section to the project's root
+`AGENTS.md`, creating the file if needed. Future agents that read that file are
+prompted to use the skill when they encounter friction, without waiting for
+another explicit invocation.
+
+The note covers quick capture, checking for duplicates, and closing or deferring
+triaged reports. Existing equivalent notes are reused, unrelated instructions
+are preserved, and no machine-specific skill paths or credentials are added.
+Storage setup is separate; the note can be installed while setup is pending.
+The agent reports the edit but does not commit it automatically. Read-only
+projects or users who decline receive the snippet instead.
+
+This is an instruction for the agent using the skill, **not a side effect of
+running the CLI's `setup` command**. It relies on the harness reading `AGENTS.md`;
+it is not an automatic background hook.
+
 ## Storage choices
 
 | Storage | Use it for |

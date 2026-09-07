@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.1
+
+- Require first-use project onboarding: add a portable Papercuts reminder to
+  the root `AGENTS.md`, or reuse/update an existing equivalent section.
+- Include the note template, project-root detection guidance, and safeguards
+  for existing instructions, read-only projects and pending storage setup.
+- Clarify that agents perform this edit; CLI setup does not modify projects.
+
 ## 0.1.0
 
 Initial public release.
