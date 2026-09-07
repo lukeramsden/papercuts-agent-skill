@@ -1,0 +1,39 @@
+name: Verify
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ['3.10', '3.14']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Standard-library tests (no cloud dependencies)
+        run: make check
+      - name: Install cloud SDKs and linter
+        run: python -m pip install 'boto3>=1.40,<2' 'google-cloud-storage>=3,<4' ruff
+      - name: Cloud SDK contract tests (no credentials or network calls)
+        run: make test
+      - name: Lint
+        run: ruff check .
+  minimum-sdk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: python -m pip install 'boto3==1.40.0' 'google-cloud-storage==3.0.0'
+      - run: make test

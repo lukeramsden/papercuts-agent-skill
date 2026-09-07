@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+# Convenience entrypoint; use papercuts --config FILE doctor for an explicit config.
+exec "$(dirname "$0")/papercuts" doctor "$@"

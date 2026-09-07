@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.venv/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+*.egg-info/
+.env
+.env.*
+!.env.example
+*.jsonl
+config.json
+.papercuts/
+.DS_Store

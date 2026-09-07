@@ -1,0 +1,16 @@
+#!/usr/bin/env python3
+"""Self-contained launcher; prefer the cloud runtime created by setup."""
+import os
+from pathlib import Path
+import sys
+
+HERE = Path(__file__).resolve().parent
+home = Path(os.environ.get("PAPERCUTS_HOME", str(Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "papercuts"))).expanduser().resolve()
+runtime = home / "runtime"
+python = runtime / "bin" / "python"
+if python.exists() and Path(sys.prefix).resolve() != runtime.resolve():
+    os.execv(str(python), [str(python), str(HERE / "papercuts"), *sys.argv[1:]])
+sys.path.insert(0, str(HERE))
+from papercuts_lib.cli import main
+
+raise SystemExit(main())

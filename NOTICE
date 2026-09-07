@@ -1,0 +1,8 @@
+Papercuts Agent Skill is independent, unofficial software. It is not affiliated
+with or endorsed by any agent vendor, Amazon Web Services, Cloudflare, Google,
+Microsoft, or the maintainers of the Agent Skills specification.
+
+Provider names and trademarks belong to their respective owners. Optional
+Python SDK dependencies are distributed separately under their own licences.
+No cloud accounts, service credentials, private project records or hosted
+storage are supplied with this project.
