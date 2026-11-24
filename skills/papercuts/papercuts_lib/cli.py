@@ -7,12 +7,14 @@ import sys
 from pathlib import Path
 
 from . import config
-from .model import Conflict, DISPOSITIONS, MAX_BYTES, PapercutsError, decode, encode, validate, valid_id
-from .service import Papercuts
+from .model import Conflict, DISPOSITIONS, MAX_BYTES, PapercutsError, decode, encode, normal_repo, validate, valid_id
+from .repo import resolve as resolve_repo
+from .service import ANY_REPO, Papercuts
 from .setup import doctor, setup
 from .storage import build_storage
 
-VERSION = "0.1.1"
+VERSION = "0.2.0"
+REPO_FILTER = "Only records about this repository (normalised like add --repo); 'none' for records without one"
 
 
 class BatchError(PapercutsError):
@@ -55,6 +57,8 @@ def parser():
     p.add_argument("-t", "--tag", action="append", default=[])
     p.add_argument("--author")
     p.add_argument("--source")
+    p.add_argument("--repo", help="HOST/OWNER/NAME or remote URL; 'none' if not about a repository. "
+                   "Default: PAPERCUTS_REPO, then the current checkout's Git remote")
     for command in ("list", "search"):
         p = commands.add_parser(command)
         if command == "search":
@@ -66,6 +70,7 @@ def parser():
         p.add_argument("--deferred", action="store_true")
         p.add_argument("--min-deferrals", type=nonnegative, default=0)
         p.add_argument("--blocked-on")
+        p.add_argument("--repo", help=REPO_FILTER)
         p.add_argument("--limit", type=nonnegative, default=50, help="Output limit; 0 = all. Does not limit storage scanning.")
     p = commands.add_parser("show")
     p.add_argument("id")
@@ -97,7 +102,8 @@ def parser():
         p.add_argument("--link")
         p.add_argument("--duplicate-of")
         p.add_argument("--dry-run", action="store_true")
-    commands.add_parser("export", help="Export every record as JSONL to stdout (private data)")
+    p = commands.add_parser("export", help="Export every record as JSONL to stdout (private data)")
+    p.add_argument("--repo", help=REPO_FILTER)
     p = commands.add_parser("import", help="Create-only JSONL import; never overwrite existing records")
     p.add_argument("file", help="JSONL export file; '-' for stdin")
     p.add_argument("--dry-run", action="store_true")
@@ -117,6 +123,10 @@ def message(value):
         return data.decode("utf-8")
     except UnicodeError as exc:
         raise PapercutsError("Input must be UTF-8 text.") from exc
+
+
+def repo_filter(args):
+    return ANY_REPO if args.repo is None else normal_repo(args.repo)
 
 
 def close_options(args):
@@ -231,11 +241,11 @@ def run(args):
                         getattr(args, "source", None) or cfg.get("source", "cli"))
     command = args.command
     if command == "add":
-        return service.add(message(args.message), args.tag)
+        return service.add(message(args.message), args.tag, resolve_repo(args.repo))
     if command in ("list", "search"):
         records = service.list(status=args.status, tags=args.tag, query=args.query,
                                min_deferrals=max(args.min_deferrals, 1 if args.deferred else 0),
-                               blocked_on=args.blocked_on)
+                               blocked_on=args.blocked_on, repo=repo_filter(args))
         selected = records[:args.limit] if args.limit else records
         return {"records": selected, "matched": len(records), "truncated": len(selected) < len(records),
                 "consistency": "Per-record reads, not a transaction-wide snapshot."}
@@ -257,7 +267,7 @@ def run(args):
         return sweep(service, args)
     if command == "export":
         # Collect/validate before emitting; remote errors must not look like a complete export.
-        for record in service.list(status="all"):
+        for record in service.list(status="all", repo=repo_filter(args)):
             print(json.dumps(record, ensure_ascii=False))
         return None
     if command == "import":

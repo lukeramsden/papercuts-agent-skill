@@ -1,9 +1,10 @@
 import copy
+import json
 import unittest
 from unittest.mock import patch
 
 from support import MemoryStorage
-from papercuts_lib.model import Conflict, PapercutsError, decode, encode, valid_id
+from papercuts_lib.model import Conflict, PapercutsError, decode, encode, normal_repo, valid_id
 from papercuts_lib.service import Papercuts
 from papercuts_lib.setup import doctor
 
@@ -37,6 +38,49 @@ class CoreTests(unittest.TestCase):
         for value in ("../x", "a/b", "*", "", None, self.id + "/x"):
             with self.subTest(value=value), self.assertRaises(PapercutsError):
                 valid_id(value)
+
+    def test_repo_normalisation(self):
+        cases = {
+            "git@github.com:Softwarelove-Inc/company.git": "github.com/Softwarelove-Inc/company",
+            "ssh://git@GitHub.com:22/Softwarelove-Inc/company.git/": "github.com/Softwarelove-Inc/company",
+            "git+ssh://git@github.com/o/n": "github.com/o/n",
+            "https://github.com/Softwarelove-Inc/company.git": "github.com/Softwarelove-Inc/company",
+            "https://x-access-token:ghs_SECRET@GITHUB.COM/o/n.git": "github.com/o/n",
+            "https://user@gitlab.example.com:8443/group/sub/n": "gitlab.example.com/group/sub/n",
+            "  github.com/o/n  ": "github.com/o/n",
+            "None": None,
+        }
+        for value, expected in cases.items():
+            with self.subTest(value=value):
+                self.assertEqual(normal_repo(value), expected)
+        for value in ("", " ", "github.com", "github.com/o", "file:///tmp/repo", "/tmp/repo", "../x/y",
+                      "github.com/o/../n", "https://tok@github.com/o", "github.com/o n/x", None):
+            with self.subTest(value=value), self.assertRaises(PapercutsError) as caught:
+                normal_repo(value)
+            self.assertNotIn("tok", str(caught.exception))
+
+    def test_repo_field_and_filter(self):
+        self.assertIsNone(self.record["repo"])
+        tied = self.service.add("tied", repo="github.com/o/n")
+        self.assertEqual(self.service.list(repo="github.com/o/n"), [tied])
+        self.assertEqual(self.service.list(repo=None), [self.record])
+        self.assertEqual(len(self.service.list()), 2)
+        with self.assertRaises(PapercutsError):
+            self.service.add("raw remote", repo="git@github.com:o/n.git")
+        for bad in ("git@github.com:o/n.git", 42, "github.com/o"):
+            with self.subTest(bad=bad), self.assertRaises(PapercutsError):
+                encode(dict(self.record, repo=bad))
+
+    def test_records_without_repo_still_parse(self):
+        legacy = copy.deepcopy(self.record)
+        del legacy["repo"]
+        body = legacy.pop("body")
+        data = ("---\n" + json.dumps(legacy, indent=2) + "\n---\n" + body + "\n").encode()
+        self.store.objects[self.service.key(self.id)] = data, "legacy"
+        record, _ = self.service.get(self.id)
+        self.assertIsNone(record["repo"])
+        self.assertEqual(self.service.list(repo=None)[0]["id"], self.id)
+        self.service.note(self.id, "still writable")
 
     def test_empty_add(self):
         with self.assertRaises(PapercutsError):

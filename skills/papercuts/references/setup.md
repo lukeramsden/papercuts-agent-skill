@@ -174,6 +174,7 @@ export PAPERCUTS_NAMESPACE=my-project
 export PAPERCUTS_REGION=us-east-1
 export PAPERCUTS_AUTHOR=ci-agent
 export PAPERCUTS_SOURCE=agent
+export PAPERCUTS_REPO=github.com/OWNER/NAME  # only when there is no Git checkout
 # Credentials come from the runner's IAM role, not these variables.
 /path/to/skill/papercuts doctor
 /path/to/skill/papercuts add 'The lint command points to a removed configuration file.'
@@ -205,6 +206,10 @@ flag to conceal an actual auth/access error.
 - Author/source: command flags on `add`, then `PAPERCUTS_AUTHOR` /
   `PAPERCUTS_SOURCE`, then saved defaults; final defaults are OS username and `cli`.
   Set source/author in config or environment for note/close/defer attribution too.
+- Repository: `add --repo`, then `PAPERCUTS_REPO`, then `git remote get-url origin`
+  in the working directory (or the only remote). There is no saved default,
+  because one config serves many checkouts. If none is found, `add` fails;
+  `--repo none` stores `null` deliberately.
 
 `--install-deps` uses Python's `venv` and pip to install `boto3>=1.40,<2` for
 S3/R2, or `google-cloud-storage>=3,<4` for GCS. It needs network access and your

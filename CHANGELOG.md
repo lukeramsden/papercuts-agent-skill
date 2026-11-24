@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.0
+
+- Every record has a `repo` field naming the repository it is about, as a
+  normalised `HOST/OWNER/NAME` (for example `github.com/Softwarelove-Inc/company`).
+  SSH, `ssh://` and HTTPS remotes are accepted; credentials are never stored.
+- `add` resolves it from `--repo`, then `PAPERCUTS_REPO`, then the current
+  checkout's `origin` (or only) Git remote, and fails if none is found.
+  `--repo none` deliberately records a papercut without a repository.
+- `list`, `search` and `export` take `--repo` as an exact filter; `show`, JSON
+  output and import/export carry the field.
+- Schema version stays 1: `repo` is optional, older records read as `null`,
+  and older clients ignore the new field.
+
 ## 0.1.1
 
 - Require first-use project onboarding: add a portable Papercuts reminder to
