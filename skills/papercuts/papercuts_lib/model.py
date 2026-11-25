@@ -4,6 +4,7 @@ import datetime as dt
 import json
 import re
 import uuid
+from urllib.parse import urlsplit
 
 
 class PapercutsError(Exception):
@@ -17,6 +18,9 @@ class Conflict(PapercutsError):
 ID_RE = re.compile(r"pc_[0-9]{8}T[0-9]{12}Z_[0-9a-f]{32}\Z")
 DISPOSITIONS = ("fixed", "escalated", "wontfix", "duplicate")
 MAX_BYTES = 1024 * 1024
+REPO_SEGMENT_RE = re.compile(r"[A-Za-z0-9_.-]+\Z")
+REPO_HOST_RE = re.compile(r"[a-z0-9]([a-z0-9.-]*[a-z0-9])?\Z")
+REPO_SCP_RE = re.compile(r"(?:[^@/:]+@)?([^/:]+):(?!//)(.+)\Z")
 
 
 def now():
@@ -41,6 +45,35 @@ def text(value, label):
 
 def normal_reason(value):
     return " ".join(re.findall(r"\w+", value.casefold(), flags=re.UNICODE))
+
+
+def normal_repo(value):
+    """Return host/owner/name for a remote URL or identifier; None for the 'none' opt-out."""
+    if not isinstance(value, str) or not value.strip():
+        raise PapercutsError("Repository must not be empty; use 'none' for no repository.")
+    value = value.strip()
+    if value.casefold() == "none":
+        return None
+    if "://" in value:
+        parsed = urlsplit(value)
+        if parsed.scheme not in ("https", "http", "ssh", "git", "git+ssh") or not parsed.hostname:
+            raise PapercutsError("Repository must be a remote (https, ssh, git@host:owner/name) or host/owner/name.")
+        # hostname drops any user:token@ and :port, so credentials are never kept.
+        host, path = parsed.hostname, parsed.path
+    elif (match := REPO_SCP_RE.fullmatch(value)):
+        host, path = match.group(1), match.group(2)
+    else:
+        host, _, path = value.partition("/")
+    path = path.strip("/").removesuffix(".git")
+    parts = path.split("/")
+    host = host.lower()
+    if (not REPO_HOST_RE.fullmatch(host) or len(parts) < 2
+            or any(not REPO_SEGMENT_RE.fullmatch(p) or p in (".", "..") for p in parts)):
+        raise PapercutsError("Not a recognisable repository (expected HOST/OWNER/NAME).")
+    result = "/".join([host, *parts])
+    if len(result) > 255:
+        raise PapercutsError("Repository identifier is too long.")
+    return result
 
 
 def validate(record):
@@ -80,6 +113,10 @@ def validate(record):
     if record["deferrals"]:
         for field in ("blocked_on", "deferred_at", "defer_reason"):
             text(record.get(field), field)
+    # Optional in schema 1: records written before the field existed read as null.
+    record.setdefault("repo", None)
+    if record["repo"] is not None and (not isinstance(record["repo"], str) or normal_repo(record["repo"]) != record["repo"]):
+        raise PapercutsError("repo must be null or a normalised HOST/OWNER/NAME.")
     return record
 
 

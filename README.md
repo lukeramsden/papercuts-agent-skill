@@ -118,6 +118,7 @@ export PAPERCUTS_NAMESPACE=my-project
 export PAPERCUTS_REGION=us-east-1
 export PAPERCUTS_AUTHOR=ci-agent
 export PAPERCUTS_SOURCE=agent
+export PAPERCUTS_REPO=github.com/OWNER/NAME   # only if the runner has no Git checkout
 /path/to/skill/papercuts add 'The lint failure points to a removed config file.'
 ```
 
@@ -132,6 +133,7 @@ and [the adapter contract](skills/papercuts/references/adapters.md).
 ./papercuts add --source agent -t docs 'Quickstart links to a removed install page.'
 ./papercuts list                                 # open records
 ./papercuts list --deferred --blocked-on tools-team
+./papercuts list --repo github.com/OWNER/NAME     # one repository in a shared store
 ./papercuts show ID                              # record + opaque revision
 ./papercuts note ID 'Seen again in the Linux setup path.'
 
@@ -141,6 +143,16 @@ and [the adapter contract](skills/papercuts/references/adapters.md).
 ./papercuts close ID --as duplicate --duplicate-of CANONICAL_ID
 ./papercuts defer ID --blocked-on tools-team --reason 'Waiting for the approved replacement command.'
 ```
+
+Every record names its repository in `repo`, as `HOST/OWNER/NAME` (for example
+`github.com/Softwarelove-Inc/company`), so one shared store can serve many
+repositories, people and CI jobs. `add` uses `--repo`, then `PAPERCUTS_REPO`,
+then `git remote get-url origin` in the working directory (or the only remote).
+SSH, `ssh://` and HTTPS remotes are accepted; the host is lowercased, `.git`
+and any port are dropped, and credentials in a URL are never stored. If no
+repository is found, `add` fails; `--repo none` records one deliberately
+without a repository (stored as `null`). `list`, `search` and `export` take the
+same `--repo` as an exact filter.
 
 `add` and `note` also accept a sanitised UTF-8 body from stdin. `--source` on
 `add` overrides its source; configure `PAPERCUTS_SOURCE=agent` for all mutations.

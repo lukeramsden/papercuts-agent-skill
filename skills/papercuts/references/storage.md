@@ -38,6 +38,7 @@ Each record is Markdown with **JSON frontmatter**, a YAML-compatible mapping:
   "updated_at": "2026-01-01T12:00:00.000000Z",
   "author": "example-agent",
   "source": "agent",
+  "repo": "github.com/example-org/example-repo",
   "tags": ["docs"],
   "status": "open",
   "deferrals": 0,
@@ -52,6 +53,14 @@ The parser accepts this defined format, **not arbitrary YAML frontmatter**.
 IDs use UTC microseconds plus a full random UUID. User text is never a storage
 key. Namespaces are explicit and stable, not guessed from branch names or
 working directories.
+
+`repo` names the repository a papercut is about, as a normalised
+`HOST/OWNER/NAME` (lowercase host, no `.git`, port or credentials), or `null`.
+It is set on `add` from `--repo`, `PAPERCUTS_REPO` or the checkout's Git remote,
+and preserved by export/import. It is an optional schema-1 field: records
+written before it existed parse as `repo: null`, and older clients ignore it.
+Unlike the namespace, it is per record, so one namespace can hold several
+repositories and be filtered with `--repo`.
 
 Closing changes `status`, adds disposition/evidence/attribution and appends a
 history event. Deferral adds the owner/reason and increments the count. Notes

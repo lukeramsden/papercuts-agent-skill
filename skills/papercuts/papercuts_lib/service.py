@@ -1,7 +1,9 @@
 import copy
 from urllib.parse import urlsplit
 
-from .model import DISPOSITIONS, PapercutsError, decode, encode, new_id, normal_reason, now, text, valid_id
+from .model import DISPOSITIONS, PapercutsError, decode, encode, new_id, normal_reason, normal_repo, now, text, valid_id
+
+ANY_REPO = object()  # list() filter default; repo=None selects records not tied to a repository.
 
 
 class Papercuts:
@@ -24,18 +26,20 @@ class Papercuts:
             raise PapercutsError("Record ID does not match its storage key.")
         return record, revision
 
-    def add(self, body, tags=()):
+    def add(self, body, tags=(), repo=None):
         tags = sorted({text(t, "tag") for t in tags})
         if any(t.casefold() == "deferred" for t in tags):
             raise PapercutsError("Do not re-log deferred work. Use defer or note on the existing ID.")
+        if repo is not None and normal_repo(repo) != repo:
+            raise PapercutsError("Pass a normalised repository (HOST/OWNER/NAME) or None.")
         stamp = now()
         record = dict(schema_version=1, id=new_id(), created_at=stamp, updated_at=stamp,
-                      author=self.author, source=self.source, tags=tags, status="open",
+                      author=self.author, source=self.source, repo=repo, tags=tags, status="open",
                       deferrals=0, body=text(body, "message"), history=[])
         self.storage.write(self.key(record["id"]), encode(record), None)
         return record
 
-    def list(self, *, status="open", tags=(), query=None, min_deferrals=0, blocked_on=None):
+    def list(self, *, status="open", tags=(), query=None, min_deferrals=0, blocked_on=None, repo=ANY_REPO):
         records = []
         for key in self.storage.list(self.prefix):
             if not key.endswith(".md"):
@@ -47,6 +51,8 @@ class Papercuts:
             if not set(tags).issubset(record["tags"]) or record["deferrals"] < min_deferrals:
                 continue
             if blocked_on is not None and record.get("blocked_on") != blocked_on:
+                continue
+            if repo is not ANY_REPO and record["repo"] != repo:
                 continue
             if query:
                 searchable = "\n".join([record["body"], *record["tags"], *[

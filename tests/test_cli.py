@@ -22,6 +22,7 @@ class CLITests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.env = {k: v for k, v in os.environ.items() if not k.startswith("PAPERCUTS_")}
         self.env["PAPERCUTS_HOME"] = str(self.root / "config")
+        self.env["PAPERCUTS_REPO"] = "github.com/example/project"
         self.tool = SKILL / "papercuts"
 
     def cli(self, *args, input=None, ok=True):
@@ -78,6 +79,49 @@ class CLITests(unittest.TestCase):
         self.cli("sweep", "--all", "--as", "wontfix", "--reason", "no", "--yes")
         self.assertEqual(json.loads(self.cli("list").stdout)["records"][0]["id"], two)
 
+    def git(self, *args):
+        subprocess.run(["git", "-C", str(self.root), *args], check=True, capture_output=True)
+
+    def test_repo_resolution_order(self):
+        self.setup_local()
+        del self.env["PAPERCUTS_REPO"]
+        error = json.loads(self.cli("add", "outside a checkout", ok=False).stderr)["error"]
+        self.assertIn("--repo", error)
+        self.assertIn("PAPERCUTS_REPO", error)
+        self.assertEqual(json.loads(self.cli("list").stdout)["matched"], 0)
+        self.git("init", "-q")
+        self.cli("add", "checkout without remotes", ok=False)
+        self.git("remote", "add", "upstream", "https://x-access-token:SECRET@GitHub.com/Up/Stream.git")
+        record = json.loads(self.cli("add", "single remote").stdout)
+        self.assertEqual(record["repo"], "github.com/Up/Stream")
+        self.git("remote", "add", "fork", "git@github.com:me/fork.git")
+        self.cli("add", "two remotes, no origin", ok=False)
+        self.git("remote", "add", "origin", "git@github.com:Softwarelove-Inc/company.git")
+        self.assertEqual(json.loads(self.cli("add", "origin").stdout)["repo"], "github.com/Softwarelove-Inc/company")
+        self.env["PAPERCUTS_REPO"] = "ssh://git@gitlab.example.com:2222/group/sub/tool.git"
+        self.assertEqual(json.loads(self.cli("add", "env").stdout)["repo"], "gitlab.example.com/group/sub/tool")
+        self.assertEqual(json.loads(self.cli("add", "--repo", "github.com/a/b", "flag").stdout)["repo"], "github.com/a/b")
+        self.assertIsNone(json.loads(self.cli("add", "--repo", "none", "no repo").stdout)["repo"])
+        self.cli("add", "--repo", "", "empty", ok=False)
+        self.cli("add", "--repo", "not-a-repo", "bad", ok=False)
+        stored = "".join(p.read_text() for p in (self.root / "records").rglob("*.md"))
+        self.assertNotIn("SECRET", stored)
+
+    def test_repo_filters(self):
+        self.setup_local()
+        mine = json.loads(self.cli("add", "--repo", "git@github.com:Org/Mine.git", "mine").stdout)["id"]
+        self.cli("add", "--repo", "github.com/Org/Other", "other")
+        loose = json.loads(self.cli("add", "--repo", "none", "loose").stdout)["id"]
+        for command in (("list",), ("search", "")):
+            result = json.loads(self.cli(*command, "--repo", "https://github.com/Org/Mine").stdout)
+            self.assertEqual([r["id"] for r in result["records"]], [mine])
+        self.assertEqual([r["id"] for r in json.loads(self.cli("list", "--repo", "none").stdout)["records"]], [loose])
+        self.assertEqual(json.loads(self.cli("list").stdout)["matched"], 3)
+        exported = [json.loads(line) for line in self.cli("export", "--repo", "github.com/Org/Mine").stdout.splitlines()]
+        self.assertEqual([(r["id"], r["repo"]) for r in exported], [(mine, "github.com/Org/Mine")])
+        self.assertEqual(json.loads(self.cli("show", mine).stdout)["record"]["repo"], "github.com/Org/Mine")
+        self.cli("list", "--repo", "bad", ok=False)
+
     def test_export_import_idempotent(self):
         self.setup_local()
         one = json.loads(self.cli("add", "one").stdout)["id"]
@@ -92,6 +136,8 @@ class CLITests(unittest.TestCase):
         self.assertEqual(len(result["imported"]), 2)
         result = json.loads(self.cli("--config", str(destination), "import", "-", "--yes", input=exported).stdout)
         self.assertEqual(len(result["identical"]), 2)
+        imported = json.loads(self.cli("--config", str(destination), "list", "--status", "all").stdout)["records"]
+        self.assertEqual({r["repo"] for r in imported}, {"github.com/example/project"})
         lines = exported.splitlines()
         altered = json.loads(lines[0])
         altered["body"] = "different"

@@ -96,12 +96,18 @@ verified. Never silently fall back to a local inbox when cloud storage fails.
 ## Capture: stay focused on the user's task
 
 1. Check the destination with `path` if uncertain. Do not mix employers,
-   customers or unrelated projects in one namespace.
-2. Search for the same problem, including closed records. If an existing entry
+   customers or other trust boundaries in one store or namespace.
+2. Every record says which repository it is about. `add` takes `--repo`, then
+   `PAPERCUTS_REPO`, then the current checkout's Git remote (`origin`, or the
+   only remote), stored as `HOST/OWNER/NAME` without credentials. Run it from the
+   project's checkout. If no repository can be found, `add` fails: pass `--repo`
+   or set `PAPERCUTS_REPO`; use `--repo none` only for friction that is genuinely
+   not about a repository. Never guess a repository you have not verified.
+3. Search for the same problem, including closed records. If an existing entry
    fits, append an occurrence or new evidence with `note`; do not re-log it.
-3. Add a short, actionable account: what you tried, what happened, expected
+4. Add a short, actionable account: what you tried, what happened, expected
    behaviour, and a useful non-secret reference. Add a workaround if known.
-4. Continue the original task. Do not fix unrelated friction unless asked.
+5. Continue the original task. Do not fix unrelated friction unless asked.
 
 ```bash
 ./papercuts path
@@ -119,6 +125,7 @@ an uncertain `add` can create a duplicate: search first.
 
 ```bash
 ./papercuts list -t tooling
+./papercuts list --repo github.com/OWNER/NAME
 ./papercuts list --deferred
 ./papercuts list --min-deferrals 3
 ./papercuts list --blocked-on platform-team
@@ -174,7 +181,9 @@ an in-flight write may have committed.
 
 - Data commands emit JSON; `show --markdown` emits Markdown and `export` emits
   JSONL. Errors go to stderr and return nonzero. Help uses ordinary text.
-- `list` defaults to open records; `search` defaults to all states. Search is a
+- `list` defaults to open records; `search` defaults to all states. `list`,
+  `search` and `export` take `--repo` (exact match after normalisation; `none`
+  selects records without one). Records written before 0.2.0 have `repo: null`. Search is a
   case-insensitive substring over the body, tags, notes and reasons, not semantic
   deduplication. `--limit` limits output, not remote scanning. Report `truncated`;
   use `--limit 0` deliberately for all results. Reads are not a global snapshot.
