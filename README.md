@@ -145,7 +145,7 @@ and [the adapter contract](skills/papercuts/references/adapters.md).
 ```
 
 Every record names its repository in `repo`, as `HOST/OWNER/NAME` (for example
-`github.com/Softwarelove-Inc/company`), so one shared store can serve many
+`github.com/example-org/example-repo`), so one shared store can serve many
 repositories, people and CI jobs. `add` uses `--repo`, then `PAPERCUTS_REPO`,
 then `git remote get-url origin` in the working directory (or the only remote).
 SSH, `ssh://` and HTTPS remotes are accepted; the host is lowercased, `.git`

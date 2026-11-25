@@ -3,7 +3,7 @@
 ## 0.2.0
 
 - Every record has a `repo` field naming the repository it is about, as a
-  normalised `HOST/OWNER/NAME` (for example `github.com/Softwarelove-Inc/company`).
+  normalised `HOST/OWNER/NAME` (for example `github.com/example-org/example-repo`).
   SSH, `ssh://` and HTTPS remotes are accepted; credentials are never stored.
 - `add` resolves it from `--repo`, then `PAPERCUTS_REPO`, then the current
   checkout's `origin` (or only) Git remote, and fails if none is found.
