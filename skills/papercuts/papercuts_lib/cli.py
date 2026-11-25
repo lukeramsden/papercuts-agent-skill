@@ -13,7 +13,7 @@ from .service import ANY_REPO, Papercuts
 from .setup import doctor, setup
 from .storage import build_storage
 
-VERSION = "0.2.0"
+VERSION = "0.2.1"
 REPO_FILTER = "Only records about this repository (normalised like add --repo); 'none' for records without one"
 
 

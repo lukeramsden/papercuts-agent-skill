@@ -41,10 +41,40 @@ def install_dependencies(provider):
         venv.EnvBuilder(with_pip=True).create(runtime)
     subprocess.run([str(python), "-m", "pip", "install", "--disable-pip-version-check", package],
                    check=True, stdout=sys.stderr)
+    activate_runtime(runtime)
+
+
+def activate_runtime(runtime):
+    """Make this process import from the runtime first, as the launcher would.
+
+    The launcher only switches to the runtime at startup, so setup has to load
+    what it just installed itself. The runtime goes ahead of everything else on
+    sys.path: appended behind the system's site-packages, a distribution's own
+    packages (Ubuntu's old google.protobuf, for one) would shadow the runtime's.
+    Modules already imported from elsewhere that the runtime also provides are
+    dropped, so they're imported again from the runtime.
+    """
+    python = Path(runtime) / "bin" / "python"
     locations = json.loads(subprocess.check_output(
         [str(python), "-c", "import json,site; print(json.dumps(site.getsitepackages()))"], text=True))
+    before = list(sys.path)
     for location in locations:
         site.addsitedir(location)
+    added = [entry for entry in sys.path if entry not in before]
+    sys.path[:] = added + before
+    provided = set()
+    for location in locations:
+        if os.path.isdir(location):
+            for entry in os.listdir(location):
+                name = entry[:-3] if entry.endswith(".py") else entry
+                if name.isidentifier():
+                    provided.add(name)
+    for name in list(sys.modules):
+        if name.split(".")[0] in provided:
+            module = sys.modules[name]
+            origin = getattr(module, "__file__", None) or ""
+            if not any(origin.startswith(str(location)) for location in locations):
+                del sys.modules[name]
     importlib.invalidate_caches()
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1
+
+- `setup --install-deps` now saves the configuration in one run. It loads the SDK
+  it just installed ahead of the system's packages, so a distribution's own older
+  copy (such as Ubuntu's `google.protobuf`) no longer breaks the storage check
+  with "GCS dependencies missing".
+
 ## 0.2.0
 
 - Every record has a `repo` field naming the repository it is about, as a

@@ -3,6 +3,7 @@ import io
 import json
 import os
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -10,7 +11,7 @@ from unittest.mock import patch
 from support import SKILL  # noqa: F401
 from papercuts_lib.cli import parser
 from papercuts_lib.model import PapercutsError
-from papercuts_lib.setup import setup
+from papercuts_lib.setup import activate_runtime, setup
 
 
 class SetupTests(unittest.TestCase):
@@ -64,3 +65,37 @@ class SetupTests(unittest.TestCase):
             result = setup(args)
         self.assertEqual(result["verification"]["checks"], [])
         self.assertTrue(result["verification"]["limitations"])
+
+
+class RuntimeActivationTests(unittest.TestCase):
+    def test_runtime_packages_shadow_system_packages(self):
+        """A package the system also ships (Ubuntu's google.protobuf) must come from the runtime."""
+        import sys
+        import venv
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            system = root / "system"
+            (system / "shadowpkg").mkdir(parents=True)
+            (system / "shadowpkg/__init__.py").write_text("SOURCE = 'system'\n")
+            runtime = root / "runtime"
+            venv.EnvBuilder(with_pip=False).create(runtime)
+            python = runtime / "bin/python"
+            location = json.loads(subprocess.check_output(
+                [str(python), "-c", "import json,site; print(json.dumps(site.getsitepackages()))"], text=True))[0]
+            (Path(location) / "shadowpkg").mkdir(parents=True)
+            (Path(location) / "shadowpkg/__init__.py").write_text("SOURCE = 'runtime'\n")
+
+            saved_path, saved_modules = list(sys.path), dict(sys.modules)
+            try:
+                sys.path.insert(0, str(system))
+                import shadowpkg
+                self.assertEqual(shadowpkg.SOURCE, "system")
+                activate_runtime(runtime)
+                import shadowpkg as reloaded
+                self.assertEqual(reloaded.SOURCE, "runtime")
+            finally:
+                sys.path[:] = saved_path
+                sys.modules.clear()
+                sys.modules.update(saved_modules)
+
