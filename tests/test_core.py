@@ -41,10 +41,10 @@ class CoreTests(unittest.TestCase):
 
     def test_repo_normalisation(self):
         cases = {
-            "git@github.com:Softwarelove-Inc/company.git": "github.com/Softwarelove-Inc/company",
-            "ssh://git@GitHub.com:22/Softwarelove-Inc/company.git/": "github.com/Softwarelove-Inc/company",
+            "git@github.com:example-org/example-repo.git": "github.com/example-org/example-repo",
+            "ssh://git@GitHub.com:22/example-org/example-repo.git/": "github.com/example-org/example-repo",
             "git+ssh://git@github.com/o/n": "github.com/o/n",
-            "https://github.com/Softwarelove-Inc/company.git": "github.com/Softwarelove-Inc/company",
+            "https://github.com/example-org/example-repo.git": "github.com/example-org/example-repo",
             "https://x-access-token:ghs_SECRET@GITHUB.COM/o/n.git": "github.com/o/n",
             "https://user@gitlab.example.com:8443/group/sub/n": "gitlab.example.com/group/sub/n",
             "  github.com/o/n  ": "github.com/o/n",

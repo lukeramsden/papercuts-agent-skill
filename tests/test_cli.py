@@ -96,8 +96,8 @@ class CLITests(unittest.TestCase):
         self.assertEqual(record["repo"], "github.com/Up/Stream")
         self.git("remote", "add", "fork", "git@github.com:me/fork.git")
         self.cli("add", "two remotes, no origin", ok=False)
-        self.git("remote", "add", "origin", "git@github.com:Softwarelove-Inc/company.git")
-        self.assertEqual(json.loads(self.cli("add", "origin").stdout)["repo"], "github.com/Softwarelove-Inc/company")
+        self.git("remote", "add", "origin", "git@github.com:example-org/example-repo.git")
+        self.assertEqual(json.loads(self.cli("add", "origin").stdout)["repo"], "github.com/example-org/example-repo")
         self.env["PAPERCUTS_REPO"] = "ssh://git@gitlab.example.com:2222/group/sub/tool.git"
         self.assertEqual(json.loads(self.cli("add", "env").stdout)["repo"], "gitlab.example.com/group/sub/tool")
         self.assertEqual(json.loads(self.cli("add", "--repo", "github.com/a/b", "flag").stdout)["repo"], "github.com/a/b")
